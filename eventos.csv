@@ -1,0 +1,22 @@
+id,preço,evento,data_inicial,data_final
+1,20.00,Ativação,01-01-2021,
+2,50.00,Ativação,05-01-2021,
+2,,Desativação,11-01-2021,
+3,10.00,Ativação,01-01-2021,
+3,20.00,Mudança de Preço,15-01-2021,
+4,10.00,Ativação,01-01-2021,
+4,0,Período Promocional,20-01-2021,25-01-2021
+4,20.00,Mudança de Preço,15-01-2021,
+5,10.00,Ativação,01-01-2021,
+5,2.90,Período Promocional,11-01-2021,25-01-2021
+5,0.00,Mudança de Preço,5-01-2021,
+6,0,Período Promocional,11-01-2021,25-01-2021
+6,20.00,Mudança de Preço,15-01-2021,
+7,0,Período Promocional,11-01-2021,25-01-2021
+7,10.00,Mudança de Preço,15-01-2021,
+7,20.00,Ativação,26-01-2021,
+8,15.00,Ativação,05-01-2021,
+8,,Desativação,15-01-2021,
+8,0,Período Promocional,10-01-2021,25-01-2021
+8,20.00,Mudança de Preço,15-01-2021,
+8,25.00,Ativação,20-01-2021,
