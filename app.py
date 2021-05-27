@@ -2,8 +2,25 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 import logging
+import argparse
 
 logging.basicConfig( format='%(asctime)s - %(module)s - %(funcName)s - %(levelname)s - %(message)s', level=logging.INFO)
+
+def parse_arguments():
+    """
+    Método auxiliar para captura do path do arquivo de entrada nos
+    argumentos informados na chamada do script
+    """
+    parser = argparse.ArgumentParser(
+        description="Utilitário para geração de fatura de maquininhas.")
+
+    parser.add_argument("source",
+                        metavar="source",
+                        type=str,
+                        help="caminho do arquivo de entrada")
+
+    return parser.parse_args()
+
 
 def check_data_final(event):
     """
@@ -84,6 +101,12 @@ def check_promocional_overlap(df_event):
 
 
 def prep_billing(df, ultimo_dia=datetime(2021, 1, 31)):
+    """
+    Método retorna DataFrame resultante do processo de prepração dos eventos
+    da maquineta. Nele, os eventos são convertidos em períodos de faturamento,
+    com suas devidas datas de inicio e fim, preço praticado no período e tipo
+    do período.
+    """
     list_events = df.sort_values('data_inicial').to_dict('records')
 
     report = []
@@ -136,7 +159,13 @@ def prep_billing(df, ultimo_dia=datetime(2021, 1, 31)):
 
     return pd.DataFrame(report)
 
+
 def calc_billing(df):
+    """
+    Método retorna o valor de fatura a partir dos dados presentes 
+    no DataFrame de input, que deve ser resultado do método
+    prep_billing
+    """
     rows, cols = df.shape
     if rows == 0:
         logging.info('sem eventos para a maquininha')
@@ -148,18 +177,25 @@ def calc_billing(df):
         
 
 if __name__=='__main__':
-    logging.info('loading events dataset...')
-    df = pd.read_csv('eventos.csv', dtype={'id': str, 'preço': np.float64, 'evento': str, 'data_inicial': str, 'data_final': str})
-    logging.info(f'dataset has been loaded. shape: {df.shape}')
-    #rouding price
+    """
+    Main do script que "orquestra" o processamento do arquivo
+    resultando no arquivo de fatura salvo neste diretório com
+    nome "fatura.csv"
+    """
+    args = parse_arguments()
+
+    logging.info('Carregando dataset de eventos...')
+    df = pd.read_csv(args.source, dtype={'id': str, 'preço': np.float64, 'evento': str, 'data_inicial': str, 'data_final': str})
+    logging.info(f'Dataset carregado. shape: {df.shape}')
+    #Arredondando preço
     df = df.round({'preço': 2})
 
-    #parsing dates
+    #Realizando parsing das datas
     df['data_inicial'] = pd.to_datetime(df['data_inicial'], format='%d-%m-%Y')
     df['data_final'] = pd.to_datetime(df['data_final'], format='%d-%m-%Y')
     
-    logging.info('checking dataset quality rules')
-    #quality checking dataset
+    logging.info('Iniciando check de qualidade dos eventos')
+    #Check de qualidade
     df['check_dtf'] = df.apply(check_data_final, axis=1)
     df['check_dtfl'] = df.apply(check_data_final_limit, axis=1)
     df['check_dtu'] = check_data_inicial(df)
@@ -169,20 +205,17 @@ if __name__=='__main__':
     df['check_pp_over'] = check_promocional_overlap(df)
     df['check'] = df[['check_dtf', 'check_dtfl', 'check_dtu', 'check_pp', 'check_zpp', 'check_desat', 'check_pp_over']].all(axis=1)
     
+    #droping 
     df_clean = df[df['check']==True][['id', 'preço', 'evento', 'data_inicial', 'data_final']]
-    logging.info(f'cleaned dataset ended up with shape {df_clean.shape}')
+    logging.info(f'Dataset com registo validos ficou com o seguinte shape {df_clean.shape}')
 
-    #filling data_final with last date of january
-    #df_clean = df_clean.fillna({'data_final': datetime(2021, 1, 31)})
-
-    logging.info('breaking into one dataset for each device')
+    logging.info('Quebrando um dataset para cada maquininha')
     device_dfs = [df_id for i, df_id in df_clean.groupby('id')]
     fatura = []
     for df in device_dfs:
         df = df.reset_index()
         logging.info(f'calculando fatura para maquininha {df.at[0, "id"]}')
         df_preped = prep_billing(df)
-        logging.debug(df_preped.head(10))
         fatura.append(dict(id=df.at[0, "id"],
                            preco=calc_billing(df_preped)))
-    print(pd.DataFrame(fatura).head(10))
+    pd.DataFrame(fatura).round({'preco': 2}).to_csv('fatura.csv', index=False)
